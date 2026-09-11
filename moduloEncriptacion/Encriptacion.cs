@@ -1,27 +1,98 @@
-﻿
+
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ExpedientesSimple
+namespace Encriptacion
 {
+    // ============================================================
+    // MÓDULO DE ENCRIPTACIÓN - guía rápida para el equipo
+    // ============================================================
+    //
+    // El flujo de encriptación funciona de la siguiente manera: se almacena
+    // el archivo XML en dos ubicaciones: en disco (archivos encriptados)
+    // y en memoria (archivos desencriptados). Toda accion del sistema utiliza
+    // como entrada el XML en memoria (desencriptado). Cada vez que se realiza 
+    // una modificación (acciones de registrar, modificar o eliminar), 
+    // se deben guardar los cambios en el XML en disco (encriptado) para que
+    // ambos registros estén en sincronía. 
+    //
+    // Esta clase encripta y desencripta el archivo XML del proyecto
+    // usando AES-256. Cada quien la usa creando su propia instancia
+    // con la contraseña del sistema, así:
+    //
+    //   Encriptador encriptador = new Encriptador("laContraseñaDelSistema");
+    //
+    // Una vez creada la instancia, se usan sus 3 métodos según lo que
+    // se necesite hacer:
+    //
+    //   - EncriptarTexto(texto, ruta)     -> cuando ya se tiene el XML como
+    //                                        string en memoria (por ejemplo,
+    //                                        después de armar un XDocument
+    //                                        y hacer .ToString()).
+    //
+    //   - EncriptarArchivo(origen, destino) -> cuando tenés un archivo XML
+    //                                          plano ya guardado en disco
+    //                                          y querés generar su versión
+    //                                          encriptada.
+    //
+    //   - DesencriptarArchivo(ruta)       -> devuelve el contenido XML
+    //                                        (como string) para poder
+    //                                        parsearlo, por ejemplo con
+    //                                        XDocument.Parse(...).
+    //
+    // Ejemplo de uso típico en el flujo de "guardar cambios":
+    //
+    //   Encriptador encriptador = new Encriptador(contrasena);
+    //   string xml = documento.ToString();
+    //   encriptador.EncriptarTexto(xml, "expedientes.xml.enc");
+    //
+    // Ejemplo de uso típico en el flujo de "cargar datos al iniciar":
+    //
+    //   Encriptador encriptador = new Encriptador(contrasena);
+    //   string xml = encriptador.DesencriptarArchivo("expedientes.xml.enc");
+    //   XDocument documento = XDocument.Parse(xml);
+    //
+    // Si la contraseña usada para desencriptar es incorrecta, o el archivo
+    // fue corrompido, DesencriptarArchivo lanza una Exception normal con
+    // un mensaje explicando el problema (revisar el bloque try/catch más
+    // abajo). Conviene que quien la use envuelva su llamado en un try/catch
+    // para mostrarle un mensaje claro al usuario final.
+    // ============================================================
     public class Encriptador
     {
+        // La contraseña se guarda una sola vez, al crear la instancia.
+        // Por eso los métodos de esta clase no piden la contraseña de nuevo:
+        // ya quedó asociada al objeto "encriptador" que se creó.
+        private readonly string contrasena;
+
+        // Constructor: así es como el equipo crea una instancia de esta clase.
+        public Encriptador(string contrasena)
+        {
+            if (string.IsNullOrWhiteSpace(contrasena))
+            {
+                throw new ArgumentException("La contraseña no puede estar vacía.");
+            }
+            this.contrasena = contrasena;
+        }
+
         // Convierte la contraseña en una clave de 32 bytes usando SHA-256,
         // porque AES necesita una clave de un tamaño exacto (256 bits).
-        private static byte[] ObtenerClaveDesdeContrasena(string contrasena)
+        // Es un método privado: nadie fuera de esta clase lo necesita llamar.
+        private byte[] ObtenerClave()
         {
             using SHA256 sha256 = SHA256.Create();
             return sha256.ComputeHash(Encoding.UTF8.GetBytes(contrasena));
         }
 
-        // Encripta el archivo XML de rutaOrigen y guarda el resultado en rutaDestino.
-        public void EncriptarArchivo(string rutaOrigen, string rutaDestino, string contrasena)
+        // Encripta un texto que ya se tiene en memoria (por ejemplo, un XML
+        // armado con XDocument) y lo guarda en rutaDestino.
+        // Útil cuando se está trabajando con los datos en memoria y solo
+        // se quiere persistir el resultado final, sin pasar por un archivo
+        // plano intermedio.
+        public void EncriptarTexto(string texto, string rutaDestino)
         {
-            // Leemos el contenido del archivo original como texto.
-            string textoPlano = File.ReadAllText(rutaOrigen);
-            byte[] datosPlanos = Encoding.UTF8.GetBytes(textoPlano);
-
-            byte[] clave = ObtenerClaveDesdeContrasena(contrasena);
+            byte[] datosPlanos = Encoding.UTF8.GetBytes(texto);
+            byte[] clave = ObtenerClave();
 
             using Aes aes = Aes.Create();
             aes.Key = clave;
@@ -30,24 +101,50 @@ namespace ExpedientesSimple
             using ICryptoTransform encriptador = aes.CreateEncryptor();
             byte[] datosEncriptados = encriptador.TransformFinalBlock(datosPlanos, 0, datosPlanos.Length);
 
-            // Guardamos primero el IV (no es secreto) y luego los datos encriptados.
+            // Se guarda primero el IV (no es secreto) y luego los datos encriptados,
+            // uno después del otro, en el mismo archivo.
             using FileStream archivoSalida = new FileStream(rutaDestino, FileMode.Create);
             archivoSalida.Write(aes.IV, 0, aes.IV.Length);
             archivoSalida.Write(datosEncriptados, 0, datosEncriptados.Length);
         }
 
-        // Desencripta un archivo generado por EncriptarArchivo y devuelve el XML original.
-        public string DesencriptarArchivo(string rutaArchivoEncriptado, string contrasena)
+        // Encripta un archivo XML plano que ya existe en disco (rutaOrigen)
+        // y guarda el resultado en rutaDestino. Internamente solo lee el
+        // archivo y delega el trabajo a EncriptarTexto.
+        public void EncriptarArchivo(string rutaOrigen, string rutaDestino)
         {
-            byte[] contenidoCompleto = File.ReadAllBytes(rutaArchivoEncriptado);
+            if (!File.Exists(rutaOrigen))
+            {
+                throw new FileNotFoundException("El archivo a encriptar no existe.", rutaOrigen);
+            }
 
-            byte[] clave = ObtenerClaveDesdeContrasena(contrasena);
+            string textoPlano = File.ReadAllText(rutaOrigen);
+            EncriptarTexto(textoPlano, rutaDestino); // ← AQUI ESTA EL XML ENCRIPTADO, SE GUARDA EN DISCO DESPUÉS DE CUALQUIER MODIFICACIÓN
+        }
+
+        // Desencripta un archivo generado por EncriptarTexto o EncriptarArchivo
+        // y devuelve el XML original como string, listo para parsear.
+        public string DesencriptarArchivo(string rutaArchivoEncriptado)
+        {
+            if (!File.Exists(rutaArchivoEncriptado))
+            {
+                throw new FileNotFoundException("El archivo encriptado no existe.", rutaArchivoEncriptado);
+            }
+
+            byte[] contenidoCompleto = File.ReadAllBytes(rutaArchivoEncriptado);
+            byte[] clave = ObtenerClave();
 
             using Aes aes = Aes.Create();
             aes.Key = clave;
 
             // El IV mide siempre 16 bytes en AES, lo separamos del resto del archivo.
             int tamanioIV = aes.BlockSize / 8;
+
+            if (contenidoCompleto.Length < tamanioIV)
+            {
+                throw new Exception("El archivo encriptado está incompleto o corrupto.");
+            }
+
             byte[] iv = new byte[tamanioIV];
             Array.Copy(contenidoCompleto, 0, iv, 0, tamanioIV);
             aes.IV = iv;
@@ -60,74 +157,13 @@ namespace ExpedientesSimple
             {
                 using ICryptoTransform desencriptador = aes.CreateDecryptor();
                 byte[] datosPlanos = desencriptador.TransformFinalBlock(datosEncriptados, 0, datosEncriptados.Length);
-                return Encoding.UTF8.GetString(datosPlanos);
+                return Encoding.UTF8.GetString(datosPlanos); // ← AQUI ESTA EL XML RECUPERADO
             }
             catch (CryptographicException)
             {
                 // Si la contraseña es incorrecta, AES suele fallar aquí porque
                 // el padding del texto desencriptado no tiene sentido.
                 throw new Exception("No se pudo desencriptar el archivo. Verifique que la contraseña sea correcta.");
-            }
-        }
-    }
-
-    internal class Program
-    {
-        private static void Main()
-        {
-            // 1. Creamos un archivo XML de prueba, como si fuera un expediente académico.
-            string rutaOriginal = "expediente.xml";
-            string rutaEncriptado = "expediente.xml.enc";
-            string rutaDesencriptado = "expediente_recuperado.xml";
-
-            string xmlDePrueba =
-                @"<expediente>
-                <carnet>20231234</carnet>
-                <nombre>María José Pérez</nombre>
-                <carrera>Ingeniería en Sistemas</carrera>
-                </expediente>";
-
-            File.WriteAllText(rutaOriginal, xmlDePrueba);
-            Console.WriteLine("1) Archivo original creado: " + rutaOriginal);
-            Console.WriteLine(xmlDePrueba);
-
-            // 2. Encriptamos el archivo con una contraseña.
-            string contrasena = "miClaveSecreta123";
-            Encriptador encriptador = new Encriptador();
-            encriptador.EncriptarArchivo(rutaOriginal, rutaEncriptado, contrasena);
-            Console.WriteLine("\n2) Archivo encriptado creado: " + rutaEncriptado);
-
-            // Mostramos que el archivo encriptado ya NO se puede leer como texto normal.
-            byte[] bytesEncriptados = File.ReadAllBytes(rutaEncriptado);
-            Console.WriteLine("   Tamaño del archivo encriptado: " + bytesEncriptados.Length + " bytes (ilegible como texto)");
-
-            // 3. Desencriptamos el archivo con la misma contraseña.
-            string xmlRecuperado = encriptador.DesencriptarArchivo(rutaEncriptado, contrasena);
-            File.WriteAllText(rutaDesencriptado, xmlRecuperado);
-            Console.WriteLine("\n3) Archivo desencriptado:");
-            Console.WriteLine(xmlRecuperado);
-
-            // 4. Verificamos que el contenido recuperado es igual al original.
-            if (xmlRecuperado == xmlDePrueba)
-            {
-                Console.WriteLine("\nPRUEBA EXITOSA: el contenido desencriptado es igual al original.");
-            }
-            else
-            {
-                Console.WriteLine("\nPRUEBA FALLIDA: el contenido no coincide.");
-            }
-
-            // 5. Probamos qué pasa si alguien usa una contraseña incorrecta.
-            Console.WriteLine("\n4) Probando con una contraseña incorrecta...");
-            try
-            {
-                encriptador.DesencriptarArchivo(rutaEncriptado, "contrasenaEquivocada");
-                Console.WriteLine("Esto no debería pasar: se desencriptó sin la contraseña correcta.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("PRUEBA EXITOSA: se rechazó la contraseña incorrecta.");
-                Console.WriteLine("   Mensaje: " + ex.Message);
             }
         }
     }

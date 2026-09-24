@@ -1,328 +1,143 @@
-// ============================================================
-// MODULO 3 - BUSQUEDA Y LISTADO
-// Proyecto: Sistema de Expedientes Academicos (XML)
-// Curso: Manejo e Implementacion de Archivos - 2026S2
-// ============================================================
-// Responsabilidad de este modulo:
-//   - Cargar el XML de expedientes en memoria.
-//   - Construir un indice (Dictionary) por carne para busqueda O(1),
-//     en vez de recorrer todo el XML linealmente cada vez.
-//   - Listar todos los expedientes.
-//   - Listar filtrando por curso o por estado de curso.
-//
-// IMPORTANTE: Las clases Expediente y Curso deben coincidir EXACTO
-// con las que use la persona 1 (modelo de datos). Si su estructura
-// cambia, ajustar aqui tambien.
-// ============================================================
+// Modulo 3 - Busqueda y listado. Usa el modelo real (Proyecto1.Modelos)
+// y el Encriptador de persona 5. El XML en disco siempre esta encriptado;
+// aqui solo se desencripta para leer, nunca se reescribe.
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Xml.Linq;
+using System.Xml.Serialization;
+using ExpedientesSimple;
+using Proyecto1.Modelos;
 
 namespace ExpedientesAcademicos
 {
-    // ---------------------------------------------------------
-    // MODELO (debe ser el mismo que usa el resto del equipo)
-    // ---------------------------------------------------------
-    public class Curso
-    {
-        public string Codigo { get; set; }
-        public string Nombre { get; set; }
-        public int Nota { get; set; }
-        public string Estado { get; set; } // "Aprobado", "Reprobado", "En curso", etc.
-    }
-
-    public class Expediente
-    {
-        public string Carne { get; set; }
-        public string Nombre { get; set; }
-        public string Carrera { get; set; }
-        public List<Curso> Cursos { get; set; } = new List<Curso>();
-    }
-
-    // ---------------------------------------------------------
-    // MODULO DE BUSQUEDA
-    // ---------------------------------------------------------
     public class ModuloBusqueda
     {
-        private readonly string rutaXml;
+        private readonly string rutaXmlEncriptado;
+        private readonly string contrasena;
+        private readonly Encriptador encriptador;
 
-        // El indice es el corazon de este modulo: carne -> Expediente.
-        // Esto es lo que le va a gustar al catedratico cuando pregunte
-        // "y donde esta el concepto de indices para recuperacion".
-        private Dictionary<string, Expediente> indicePorCarne;
-        private List<Expediente> expedientes;
+        private Expedientes datos;
 
-        public ModuloBusqueda(string rutaXml)
+        // Indice en memoria: codigoEstudiante -> Expediente, para busqueda O(1)
+        private Dictionary<string, Expediente> indicePorCodigo;
+
+        public ModuloBusqueda(string rutaXmlEncriptado, string contrasena)
         {
-            this.rutaXml = rutaXml;
-            this.expedientes = new List<Expediente>();
-            this.indicePorCarne = new Dictionary<string, Expediente>();
+            this.rutaXmlEncriptado = rutaXmlEncriptado;
+            this.contrasena = contrasena;
+            encriptador = new Encriptador();
+            indicePorCodigo = new Dictionary<string, Expediente>(StringComparer.OrdinalIgnoreCase);
         }
 
-        // -----------------------------------------------------
-        // Carga el XML completo a memoria y construye el indice.
-        // Se debe llamar antes de cualquier busqueda/listado.
-        // -----------------------------------------------------
         public void CargarDesdeXml()
         {
-            expedientes.Clear();
-            indicePorCarne.Clear();
-
+            indicePorCodigo.Clear();
             try
             {
-                if (!System.IO.File.Exists(rutaXml))
+                if (!File.Exists(rutaXmlEncriptado))
+                    throw new FileNotFoundException($"No se encontro el archivo: {rutaXmlEncriptado}");
+
+                string xmlTexto = encriptador.DesencriptarArchivo(rutaXmlEncriptado, contrasena);
+                XmlSerializer serializer = new XmlSerializer(typeof(Expedientes));
+                using StringReader reader = new StringReader(xmlTexto);
+                datos = (Expedientes)serializer.Deserialize(reader);
+
+                foreach (Expediente exp in datos.Lista)
                 {
-                    throw new System.IO.FileNotFoundException(
-                        $"No se encontro el archivo XML en la ruta: {rutaXml}");
+                    if (!indicePorCodigo.ContainsKey(exp.CodigoEstudiante))
+                        indicePorCodigo.Add(exp.CodigoEstudiante, exp);
                 }
-
-                XDocument doc = XDocument.Load(rutaXml);
-
-                foreach (XElement expEl in doc.Root.Elements("expediente"))
-                {
-                    Expediente exp = new Expediente
-                    {
-                        Carne = (string)expEl.Element("carne"),
-                        Nombre = (string)expEl.Element("nombre"),
-                        Carrera = (string)expEl.Element("carrera")
-                    };
-
-                    XElement cursosEl = expEl.Element("cursos");
-                    if (cursosEl != null)
-                    {
-                        foreach (XElement cursoEl in cursosEl.Elements("curso"))
-                        {
-                            exp.Cursos.Add(new Curso
-                            {
-                                Codigo = (string)cursoEl.Element("codigo"),
-                                Nombre = (string)cursoEl.Element("nombre"),
-                                Nota = (int?)cursoEl.Element("nota") ?? 0,
-                                Estado = (string)cursoEl.Element("estado")
-                            });
-                        }
-                    }
-
-                    expedientes.Add(exp);
-
-                    // Si hay carnes duplicados en el XML, algo esta mal con
-                    // la validacion del modulo de registro. Avisamos pero
-                    // no tronamos el programa.
-                    if (!indicePorCarne.ContainsKey(exp.Carne))
-                    {
-                        indicePorCarne.Add(exp.Carne, exp);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[AVISO] Carne duplicado detectado en el XML: {exp.Carne}");
-                    }
-                }
-            }
-            catch (System.Xml.XmlException ex)
-            {
-                Console.WriteLine("[ERROR] El archivo XML esta mal formado: " + ex.Message);
-            }
-            catch (System.IO.FileNotFoundException ex)
-            {
-                Console.WriteLine("[ERROR] " + ex.Message);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[ERROR] Ocurrio un problema leyendo el XML: " + ex.Message);
+                // Cubre: archivo no encontrado, contrasena incorrecta, XML mal formado.
+                Console.WriteLine("[ERROR] No se pudo cargar el XML: " + ex.Message);
+                datos = new Expedientes();
             }
         }
 
-        // -----------------------------------------------------
-        // Busqueda por identificador unico (carne). O(1) gracias
-        // al diccionario en vez de recorrer la lista completa.
-        // -----------------------------------------------------
-        public Expediente BuscarPorCarne(string carne)
+        public Expediente BuscarPorCodigo(string codigo)
         {
-            if (string.IsNullOrWhiteSpace(carne))
+            if (string.IsNullOrWhiteSpace(codigo))
             {
-                Console.WriteLine("[ERROR] Debe indicar un carne para buscar.");
+                Console.WriteLine("[ERROR] Debe indicar un codigo.");
                 return null;
             }
 
-            if (indicePorCarne.TryGetValue(carne, out Expediente encontrado))
-            {
+            if (indicePorCodigo.TryGetValue(codigo, out Expediente encontrado))
                 return encontrado;
-            }
 
-            Console.WriteLine($"[INFO] No existe ningun expediente con carne {carne}.");
+            Console.WriteLine($"[INFO] No existe expediente con codigo {codigo}.");
             return null;
         }
 
-        // -----------------------------------------------------
-        // Listado completo de expedientes.
-        // -----------------------------------------------------
-        public List<Expediente> ListarTodos()
-        {
-            return expedientes;
-        }
+        public List<Expediente> ListarTodos() => datos.Lista;
 
-        // -----------------------------------------------------
-        // Listado filtrado: expedientes que tengan un curso
-        // especifico (por codigo de curso).
-        // -----------------------------------------------------
         public List<Expediente> ListarPorCurso(string codigoCurso)
         {
-            return expedientes
-                .Where(e => e.Cursos.Any(c => c.Codigo.Equals(codigoCurso, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
+            return datos.Lista.Where(e => e.BuscarCurso(codigoCurso) != null).ToList();
         }
 
-        // -----------------------------------------------------
-        // Listado filtrado: expedientes que tengan al menos un
-        // curso en un estado especifico (ej. "Reprobado").
-        // -----------------------------------------------------
-        public List<Expediente> ListarPorEstado(string estado)
+        // estado: "Aprobado" o "Reprobado" (se calcula por nota, no se guarda en XML)
+        public List<Expediente> ListarPorEstadoCurso(string estado)
         {
-            return expedientes
+            return datos.Lista
                 .Where(e => e.Cursos.Any(c => c.Estado.Equals(estado, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
         }
 
-        // -----------------------------------------------------
-        // Utilidad para mostrar un expediente bonito en consola.
-        // -----------------------------------------------------
         public void ImprimirExpediente(Expediente exp)
         {
             if (exp == null) return;
-
             Console.WriteLine("==================================================");
-            Console.WriteLine($"Carne:   {exp.Carne}");
-            Console.WriteLine($"Nombre:  {exp.Nombre}");
-            Console.WriteLine($"Carrera: {exp.Carrera}");
-            Console.WriteLine("Cursos:");
+            Console.WriteLine(exp.ToString());
             foreach (Curso c in exp.Cursos)
-            {
-                Console.WriteLine($"   - [{c.Codigo}] {c.Nombre} | Nota: {c.Nota} | Estado: {c.Estado}");
-            }
+                Console.WriteLine("   - " + c);
             Console.WriteLine("==================================================");
         }
     }
 
-    // ---------------------------------------------------------
-    // PROGRAMA DE PRUEBA STANDALONE
-    // Esto es solo para probar el modulo por separado. Cuando se
-    // integre con el equipo, este Main se reemplaza por el menu
-    // general del sistema (persona 5).
-    // ---------------------------------------------------------
+    // Main de prueba desactivado: el proyecto integrado solo puede tener UN Main
+    // (el del menu general de persona 5). Descomentar solo para probar este
+    // modulo por separado.
+    /*
     class Program
     {
         static void Main(string[] args)
         {
-            string ruta = "expedientes.xml";
+            string rutaPlano = "expedientes.xml";
+            string rutaEncriptado = "expedientes.xml.enc";
+            string contrasena = "claveDelEquipo123";
 
-            // Si no existe el XML todavia (porque el modulo de registro
-            // no ha corrido), generamos uno de prueba para no depender
-            // de nadie mas mientras probamos este modulo.
-            if (!System.IO.File.Exists(ruta))
+            if (!File.Exists(rutaEncriptado))
             {
-                GenerarXmlDePrueba(ruta);
-                Console.WriteLine("[INFO] No existia XML, se genero uno de prueba: " + ruta);
+                Expedientes datos = new Expedientes();
+                Expediente e1 = new Expediente("1119452", "Eduardo", "Moran", "Ingenieria en Informatica", 8, "eduardo@url.edu.gt");
+                e1.AgregarCurso(new Curso("MIA101", "Manejo e Implementacion de Archivos", 3, 90, "2026-S2"));
+                e1.AgregarCurso(new Curso("EDD202", "Estructura de Datos II", 4, 55, "2025-S1"));
+                datos.AgregarExpediente(e1);
+
+                XmlSerializer serializer = new XmlSerializer(typeof(Expedientes));
+                using (StreamWriter writer = new StreamWriter(rutaPlano))
+                    serializer.Serialize(writer, datos);
+
+                new Encriptador().EncriptarArchivo(rutaPlano, rutaEncriptado, contrasena);
+                File.Delete(rutaPlano);
+                Console.WriteLine("[INFO] XML de prueba generado y encriptado.");
             }
 
-            ModuloBusqueda modulo = new ModuloBusqueda(ruta);
+            ModuloBusqueda modulo = new ModuloBusqueda(rutaEncriptado, contrasena);
             modulo.CargarDesdeXml();
 
-            bool salir = false;
-            while (!salir)
-            {
-                Console.WriteLine("\n---- MODULO DE BUSQUEDA Y LISTADO ----");
-                Console.WriteLine("1. Buscar por carne");
-                Console.WriteLine("2. Listar todos los expedientes");
-                Console.WriteLine("3. Listar por curso (codigo)");
-                Console.WriteLine("4. Listar por estado de curso");
-                Console.WriteLine("5. Recargar XML");
-                Console.WriteLine("0. Salir");
-                Console.Write("Opcion: ");
-                string opcion = Console.ReadLine();
+            Console.Write("Codigo a buscar: ");
+            string codigo = Console.ReadLine();
+            modulo.ImprimirExpediente(modulo.BuscarPorCodigo(codigo));
 
-                switch (opcion)
-                {
-                    case "1":
-                        Console.Write("Carne a buscar: ");
-                        string carne = Console.ReadLine();
-                        Expediente exp = modulo.BuscarPorCarne(carne);
-                        modulo.ImprimirExpediente(exp);
-                        break;
-
-                    case "2":
-                        var todos = modulo.ListarTodos();
-                        Console.WriteLine($"Total de expedientes: {todos.Count}");
-                        foreach (var e in todos) modulo.ImprimirExpediente(e);
-                        break;
-
-                    case "3":
-                        Console.Write("Codigo de curso: ");
-                        string cod = Console.ReadLine();
-                        var porCurso = modulo.ListarPorCurso(cod);
-                        Console.WriteLine($"Expedientes con el curso {cod}: {porCurso.Count}");
-                        foreach (var e in porCurso) modulo.ImprimirExpediente(e);
-                        break;
-
-                    case "4":
-                        Console.Write("Estado a buscar (Aprobado/Reprobado/En curso): ");
-                        string estado = Console.ReadLine();
-                        var porEstado = modulo.ListarPorEstado(estado);
-                        Console.WriteLine($"Expedientes con curso en estado '{estado}': {porEstado.Count}");
-                        foreach (var e in porEstado) modulo.ImprimirExpediente(e);
-                        break;
-
-                    case "5":
-                        modulo.CargarDesdeXml();
-                        Console.WriteLine("[INFO] XML recargado.");
-                        break;
-
-                    case "0":
-                        salir = true;
-                        break;
-
-                    default:
-                        Console.WriteLine("Opcion invalida.");
-                        break;
-                }
-            }
-        }
-
-        // Genera un XML de prueba con 3 expedientes para poder
-        // correr este modulo sin depender de los demas todavia.
-        static void GenerarXmlDePrueba(string ruta)
-        {
-            XDocument doc = new XDocument(
-                new XElement("expedientes",
-                    new XElement("expediente",
-                        new XElement("carne", "1119452"),
-                        new XElement("nombre", "Eduardo Test"),
-                        new XElement("carrera", "Ingenieria en Informatica"),
-                        new XElement("cursos",
-                            new XElement("curso",
-                                new XElement("codigo", "MIA101"),
-                                new XElement("nombre", "Manejo e Implementacion de Archivos"),
-                                new XElement("nota", 90),
-                                new XElement("estado", "Aprobado")),
-                            new XElement("curso",
-                                new XElement("codigo", "EDD202"),
-                                new XElement("nombre", "Estructura de Datos II"),
-                                new XElement("nota", 55),
-                                new XElement("estado", "Reprobado")))),
-                    new XElement("expediente",
-                        new XElement("carne", "1119999"),
-                        new XElement("nombre", "Ana Ejemplo"),
-                        new XElement("carrera", "Ingenieria Industrial"),
-                        new XElement("cursos",
-                            new XElement("curso",
-                                new XElement("codigo", "MIA101"),
-                                new XElement("nombre", "Manejo e Implementacion de Archivos"),
-                                new XElement("nota", 75),
-                                new XElement("estado", "Aprobado"))))
-                )
-            );
-
-            doc.Save(ruta);
+            Console.WriteLine("\nTodos los expedientes:");
+            foreach (var e in modulo.ListarTodos()) modulo.ImprimirExpediente(e);
         }
     }
+    */
 }

@@ -12,15 +12,17 @@ namespace ExpedientesAcademicos.Creacion
         private readonly string datos = "Datos";
         // El archivo ahora se guarda con extensión .xml.enc porque su
         // contenido ya no es XML legible, sino XML encriptado.
-        private readonly string rutaArchivo = Path.Combine("Datos", "expedientes.xml.enc");
 
         private readonly string contrasena;
+
+        private readonly string rutaArchivo;
         private readonly Encriptador encriptador;
 
-        public ModuloCreacion(string contrasena)
+        public ModuloCreacion(string contrasena, string ruta)
         {
             this.contrasena = contrasena;
             encriptador = new Encriptador(contrasena);
+            this.rutaArchivo = ruta;
         }
 
         public void CrearArchivo()
@@ -68,10 +70,6 @@ namespace ExpedientesAcademicos.Creacion
                 Directory.CreateDirectory(datos);
             }
 
-            // Mismo patrón que ModuloActualizacionEliminacion.GuardarXml():
-            // se serializa a un .tmp en texto plano, se encripta ese .tmp
-            // sobre el archivo final, y el .tmp se borra siempre, incluso
-            // si algo falla.
             string temp = rutaArchivo + ".tmp";
             try
             {

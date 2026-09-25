@@ -91,39 +91,55 @@ class SistemaExpedientes
     // Métodos de recopilación de datos
     // ============================================================
 
-    static (string codigoEstudiante, string nombreEstudiante, string apellidoEstudiante, string carreraEstudiante, int semestreEstudiante, string correoEstudiante) RecopilarDatosEstudiante()
+    static (string codigoEstudiante, string nombreEstudiante, string apellidoEstudiante, string carreraEstudiante, int semestreEstudiante, string correoEstudiante) RecopilarDatosEstudiante(int tipo)
     {
-        Console.WriteLine("\nIngrese los datos del estudiante:");
-        Console.WriteLine("Código del estudiante:");
-        string codigoEstudiante = Console.ReadLine() ?? "";
-        Console.WriteLine("Nombre del estudiante:");
-        string nombreEstudiante = Console.ReadLine() ?? "";
-        Console.WriteLine("Apellido del estudiante:");
-        string apellidoEstudiante = Console.ReadLine() ?? "";
-        Console.WriteLine("Carrera del estudiante:");
-        string carreraEstudiante = Console.ReadLine() ?? "";
-        int semestreEstudiante = LeerEntero("Semestre del estudiante:", minimo: 1);
-        Console.WriteLine("Correo del estudiante:");
-        string correoEstudiante = Console.ReadLine() ?? "";
-
-        return (codigoEstudiante, nombreEstudiante, apellidoEstudiante, carreraEstudiante, semestreEstudiante, correoEstudiante);
+        if (tipo == 1) //Si es 1 es para ingresar nuevos datos
+        {
+            Console.WriteLine("\nIngrese los datos del estudiante:");
+            Console.WriteLine("Código del estudiante:");
+            string codigoEstudiante = Console.ReadLine() ?? "";
+            Console.WriteLine("Nombre del estudiante:");
+            string nombreEstudiante = Console.ReadLine() ?? "";
+            Console.WriteLine("Apellido del estudiante:");
+            string apellidoEstudiante = Console.ReadLine() ?? "";
+            Console.WriteLine("Carrera del estudiante:");
+            string carreraEstudiante = Console.ReadLine() ?? "";
+            int semestreEstudiante = LeerEntero("Semestre del estudiante (1 hasta 12):", minimo: 1, maximo: 12);
+            Console.WriteLine("Correo del estudiante (debe contener '@' y '.'):");
+            string correoEstudiante = Console.ReadLine() ?? "";
+            return (codigoEstudiante, nombreEstudiante, apellidoEstudiante, carreraEstudiante, semestreEstudiante, correoEstudiante);
+        }
+        else //Si es otro numero, es para actualizar datos (no se pide codigo)
+        {
+            Console.WriteLine("\nIngrese los actualizados datos del estudiante:");
+            Console.WriteLine("Nombre a actualizar del estudiante:");
+            string nombreEstudiante = Console.ReadLine() ?? "";
+            Console.WriteLine("Apellido a actualizar del estudiante:");
+            string apellidoEstudiante = Console.ReadLine() ?? "";
+            Console.WriteLine("Carrera a actulizar del estudiante:");
+            string carreraEstudiante = Console.ReadLine() ?? "";
+            int semestreEstudiante = LeerEntero("Semestre a actualizar del estudiante (1 hasta 12):", minimo: 1, maximo: 12);
+            Console.WriteLine("Correo a actualizar del estudiante (debe contener '@' y '.'):");
+            string correoEstudiante = Console.ReadLine() ?? ""; 
+            return ("", nombreEstudiante, apellidoEstudiante, carreraEstudiante, semestreEstudiante, correoEstudiante);
+        }
     }
 
     static (string codigoCurso, string nombreCurso, int creditosCurso, double calificacionCurso, string cicloAcademico) RecopilarDatosCurso()
     {
-        Console.WriteLine("\nIngrese los datos del curso:");
-        Console.WriteLine("Código del curso:");
-        string codigoCurso = Console.ReadLine() ?? "";
-        Console.WriteLine("Nombre del curso:");
-        string nombreCurso = Console.ReadLine() ?? "";
+            Console.WriteLine("\nIngrese los datos del curso:");
+            Console.WriteLine("Código del curso:");
+            string codigoCurso = Console.ReadLine() ?? "";
+            Console.WriteLine("Nombre del curso:");
+            string nombreCurso = Console.ReadLine() ?? "";
 
-        int creditosCurso = LeerEntero("Créditos del curso:", minimo: 1);
-        double calificacionCurso = LeerDecimal("Calificación del curso (0-100):", minimo: 0, maximo: 100);
+            int creditosCurso = LeerEntero("Créditos del curso (min. 1):", minimo: 1);
+            double calificacionCurso = LeerDecimal("Calificación del curso (0-100):", minimo: 0, maximo: 100);
 
-        Console.WriteLine("Ciclo académico (ej. 2026-S1):");
-        string cicloAcademico = Console.ReadLine() ?? "";
+            Console.WriteLine("Ciclo académico (ej. 2026-S1):");
+            string cicloAcademico = Console.ReadLine() ?? "";
 
-        return (codigoCurso, nombreCurso, creditosCurso, calificacionCurso, cicloAcademico);
+            return (codigoCurso, nombreCurso, creditosCurso, calificacionCurso, cicloAcademico);
     }
 
     // ============================================================
@@ -134,7 +150,7 @@ class SistemaExpedientes
     // nueva. No modifica el archivo original hasta confirmar que la
     // contraseña actual ingresada es correcta y que la nueva coincide
     // en ambos intentos.
-    static string? CambiarContrasena(string contrasenaActual, Expedientes expedientesRegistrados)
+    static string? CambiarContrasena(string contrasenaActual, Expedientes expedientesRegistrados, string rutaActual)
     {
         Console.WriteLine("\n | Opción Seleccionada: Cambiar la contraseña del sistema |");
         Console.Write("Para continuar, confirme la contraseña actual: ");
@@ -170,7 +186,7 @@ class SistemaExpedientes
         {
             // Se crea un módulo temporal con la nueva contraseña únicamente
             // para volver a encriptar y guardar los datos ya existentes.
-            ModuloCreacion moduloConNuevaContrasena = new ModuloCreacion(nuevaContrasena);
+            ModuloCreacion moduloConNuevaContrasena = new ModuloCreacion(nuevaContrasena, rutaActual);
             moduloConNuevaContrasena.GuardarArchivo(expedientesRegistrados);
 
             Console.WriteLine("[OK] Contraseña actualizada correctamente. A partir de ahora use la nueva contraseña para ingresar al sistema.\n");
@@ -203,7 +219,7 @@ class SistemaExpedientes
             return;
         }
 
-        ModuloCreacion moduloCreacion = new ModuloCreacion(contrasena);
+        ModuloCreacion moduloCreacion = new ModuloCreacion(contrasena, ruta);
         ModuloBusqueda moduloBusqueda = new ModuloBusqueda(ruta, contrasena);
         ModuloActualizacionEliminacion moduloActualizacion = new ModuloActualizacionEliminacion(ruta, contrasena);
 
@@ -246,7 +262,7 @@ class SistemaExpedientes
             Console.WriteLine("[2]| Consultar un expediente académico por código de estudiante |");
             Console.WriteLine("[3]| Consultar todos los expedientes académicos registrados |");
             Console.WriteLine("[4]| Actualizar un expediente académico existente |");
-            Console.WriteLine("[5]| Actualizar un curso de un expediente académico |");
+            Console.WriteLine("[5]| Actualizar/Agregar un curso de un expediente académico |");
             Console.WriteLine("[6]| Eliminar un expediente académico por número |");
             Console.WriteLine("[7]| Eliminar un curso de un expediente académico |");
             Console.WriteLine("[8]| Cambiar la contraseña del sistema |");
@@ -263,7 +279,7 @@ class SistemaExpedientes
                     Expediente? nuevoExpediente = null;
                     while (nuevoExpediente == null)
                     {
-                        var datosEstudiante = RecopilarDatosEstudiante();
+                        var datosEstudiante = RecopilarDatosEstudiante(1);
                         try
                         {
                             nuevoExpediente = new Expediente(
@@ -339,7 +355,7 @@ class SistemaExpedientes
                     Console.Write("Ingrese el código del expediente a actualizar: ");
                     string codigoActualizar = Console.ReadLine() ?? "";
 
-                    var nuevosDatos = RecopilarDatosEstudiante();
+                    var nuevosDatos = RecopilarDatosEstudiante(2);
                     moduloActualizacion.ActualizarExpediente(
                         codigoActualizar,
                         nuevosDatos.nombreEstudiante,
@@ -350,12 +366,13 @@ class SistemaExpedientes
                     break;
 
                 case 5:
-                    Console.WriteLine(" | Opción Seleccionada: Actualizar un curso de un expediente académico |");
+                    Console.WriteLine(" | Opción Seleccionada: Actualizar/Agregar un curso de un expediente académico |");
                     moduloActualizacion.CargarDesdeXml();
                     Console.Write("Ingrese el código del expediente al que pertenece el curso: ");
                     string codigoExpedienteCurso = Console.ReadLine() ?? "";
 
                     var datosCursoActualizar = RecopilarDatosCurso();
+                    try {
                     moduloActualizacion.ActualizarCurso(
                         codigoExpedienteCurso,
                         datosCursoActualizar.codigoCurso,
@@ -363,6 +380,12 @@ class SistemaExpedientes
                         datosCursoActualizar.creditosCurso,
                         datosCursoActualizar.calificacionCurso,
                         datosCursoActualizar.cicloAcademico);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        Console.WriteLine("[ERROR] " + ex.Message);
+                        Console.WriteLine("Por favor, ingrese los datos del curso nuevamente.");
+                    }
                     break;
 
                 case 6:
@@ -384,14 +407,14 @@ class SistemaExpedientes
                     break;
 
                 case 8:
-                    string? contrasenaNueva = CambiarContrasena(contrasena, expedientesRegistrados);
+                    string? contrasenaNueva = CambiarContrasena(contrasena, expedientesRegistrados, ruta);
                     if (contrasenaNueva != null)
                     {
                         // Se actualiza la contraseña en uso y se recrean los módulos
                         // que dependen de ella, para que las siguientes operaciones
                         // (buscar, actualizar, eliminar) usen la contraseña nueva.
                         contrasena = contrasenaNueva;
-                        moduloCreacion = new ModuloCreacion(contrasena);
+                        moduloCreacion = new ModuloCreacion(contrasena, ruta);
                         moduloBusqueda = new ModuloBusqueda(ruta, contrasena);
                         moduloActualizacion = new ModuloActualizacionEliminacion(ruta, contrasena);
                     }

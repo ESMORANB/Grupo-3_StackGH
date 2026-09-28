@@ -88,4 +88,13 @@ echo ============================================
 echo   Despliegue completado
 echo   Ejecuta el sistema desde: %CARPETA_EJECUTABLE%
 echo ============================================
+echo.
+echo Iniciando el sistema...
+echo.
+
+pushd "%CARPETA_EJECUTABLE%"
+ExpedientesAcademicos.exe
+popd
+
+echo.
 pause

@@ -10,12 +10,14 @@ class SistemaExpedientes
 {
     static private string? ObtenerRutaArchivo()
     {
-        Console.Write("Ruta del archivo XML: ");
+        Console.Write("Ruta del archivo XML (Ingrese Enter para usar la ruta por defecto): ");
         string? entrada = Console.ReadLine();
 
         if (string.IsNullOrWhiteSpace(entrada))
         {
-            return "-";
+            string baseDir = AppContext.BaseDirectory;
+            string rutaPorDefecto = Path.Combine(baseDir, "repo", "ExpedientesAcademicos", "datos", "expedientes.xml.enc");
+            return rutaPorDefecto;
         }
 
         return entrada;

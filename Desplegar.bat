@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 set REPO_URL=https://github.com/ESMORANB/Grupo-3_StackGH.git
-set RAMA=fix/integrarmodulos
+set RAMA=main
 set CARPETA_PROYECTO=C:\mia_proyecto_I
 set CARPETA_REPO=%CARPETA_PROYECTO%\repo
 set CARPETA_CSPROJ=%CARPETA_REPO%\ExpedientesAcademicos

@@ -12,7 +12,15 @@ class SistemaExpedientes
     {
         Console.Write("Ruta del archivo XML (Ingrese Enter para usar la ruta por defecto): ");
         string? entrada = Console.ReadLine();
-        return entrada;
+        
+        if (string.IsNullOrWhiteSpace(entrada))
+        {
+            return "";
+        }
+
+        // Quita espacios, comillas dobles y comillas simples de los extremos
+        return entrada.Trim().Trim('"', '\'').Trim();
+       
     }
 
     // ============================================================

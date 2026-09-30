@@ -15,10 +15,7 @@ class SistemaExpedientes
 
         if (string.IsNullOrWhiteSpace(entrada))
         {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string rutaPorDefecto = Path.Combine(baseDir, "datos", "expedientes.xml.enc");
-            Console.Write(rutaPorDefecto);
-            return rutaPorDefecto;
+            return "-";
         }
 
         return entrada;
@@ -260,7 +257,7 @@ class SistemaExpedientes
             Console.WriteLine("[3]| Consultar todos los expedientes academicos registrados |");
             Console.WriteLine("[4]| Actualizar un expediente academico existente |");
             Console.WriteLine("[5]| Actualizar/Agregar un curso de un expediente academico |");
-            Console.WriteLine("[6]| Eliminar un expediente academico por codigo |");
+            Console.WriteLine("[6]| Eliminar un expediente academico por numero |");
             Console.WriteLine("[7]| Eliminar un curso de un expediente academico |");
             Console.WriteLine("[8]| Cambiar la contrasenia del sistema |");
             Console.WriteLine("[9]| Salir del sistema |");

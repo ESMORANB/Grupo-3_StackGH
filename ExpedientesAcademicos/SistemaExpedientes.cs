@@ -12,15 +12,6 @@ class SistemaExpedientes
     {
         Console.Write("Ruta del archivo XML (Ingrese Enter para usar la ruta por defecto): ");
         string? entrada = Console.ReadLine();
-
-        if (string.IsNullOrWhiteSpace(entrada))
-        {
-            string baseDir = AppContext.BaseDirectory;
-            string rutaPorDefecto = Path.Combine(baseDir, "repo", "proyecto1Mia", "Grupo-3_StackGH", "ExpedientesAcademicos",  "datos", "expedientes.xml.enc");
-            Console.Write(rutaPorDefecto);
-            return rutaPorDefecto;
-        }
-
         return entrada;
     }
 
@@ -206,6 +197,12 @@ class SistemaExpedientes
         Console.WriteLine("========== SISTEMA DE GESTION DE EXPEDIENTES ACADEMICOS ==========\n");
         Console.Write("Ingrese la contrasenia del sistema: ");
         string contrasena = Console.ReadLine() ?? "";
+
+        if (string.IsNullOrWhiteSpace(contrasena))
+        {
+            Console.WriteLine("[ERROR] La contrasenia no puede ser vacia. El sistema no puede continuar sin una contrasenia.");
+            return;
+        }
 
         Console.WriteLine("\nSeleccione el archivo de expedientes (.xml.enc) a utilizar:");
         string ruta = ObtenerRutaArchivo() ?? "";

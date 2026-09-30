@@ -1,5 +1,4 @@
-// Modulo 4 - Actualizacion, eliminacion y validaciones. Usa el modelo real
-// (Proyecto1.Modelos) y el Encriptador de persona 5. Los setters del modelo
+// Modulo 4 - Actualizacion, eliminacion y validaciones. Los setters del modelo
 // ya validan formato (lanzan ArgumentException/ArgumentOutOfRangeException);
 // aqui solo se valida que el registro exista antes de tocarlo.
 

@@ -5,7 +5,7 @@
 #
 # Uso:
 #   .\deploy.ps1
-#   .\deploy.ps1 -RepoUrl "https://gitlab.com/tu-usuario/tu-repo.git" -Rama "dev"
+#   .\deploy.ps1 -RepoUrl "https://gitlab.com/tu-usuario/tu-repo.git" -Rama "Main"
 # ============================================================
 
 param(

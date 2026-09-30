@@ -1,5 +1,5 @@
 // Modulo 3 - Busqueda y listado. Usa el modelo real (Proyecto1.Modelos)
-// y el Encriptador de persona 5. El XML en disco siempre esta encriptado;
+// y el Encriptador de Fatima. El XML en disco siempre esta encriptado;
 // aqui solo se desencripta para leer, nunca se reescribe.
 
 using System.Xml.Serialization;

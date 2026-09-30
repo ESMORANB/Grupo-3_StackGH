@@ -16,7 +16,8 @@ class SistemaExpedientes
         if (string.IsNullOrWhiteSpace(entrada))
         {
             string baseDir = AppContext.BaseDirectory;
-            string rutaPorDefecto = Path.Combine(baseDir, "repo", "ExpedientesAcademicos", "datos", "expedientes.xml.enc");
+            string rutaPorDefecto = Path.Combine(baseDir, "repo", "proyecto1Mia", "Grupo-3_StackGH", "ExpedientesAcademicos",  "datos", "expedientes.xml.enc");
+            Console.Write(rutaPorDefecto);
             return rutaPorDefecto;
         }
 
@@ -202,7 +203,7 @@ class SistemaExpedientes
     [STAThread]
     static void Main()
     {
-        Console.WriteLine("========== SISTEMA DE GESTION DE EXPEDIENTES academicoS ==========\n");
+        Console.WriteLine("========== SISTEMA DE GESTION DE EXPEDIENTES ACADEMICOS ==========\n");
         Console.Write("Ingrese la contrasenia del sistema: ");
         string contrasena = Console.ReadLine() ?? "";
 

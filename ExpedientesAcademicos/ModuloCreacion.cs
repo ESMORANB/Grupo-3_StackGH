@@ -124,19 +124,6 @@ namespace ExpedientesAcademicos.Creacion
                 return expedienteEncontrado;
             }
         }
-
-        public void PrecargarArchivoVacio()
-        {
-            if (Directory.Exists(datos) == false)
-            {
-                Directory.CreateDirectory(datos);
-            }
-
-            Expedientes expedientesVacios = new Expedientes();
-            GuardarArchivo(expedientesVacios);
-
-            Console.WriteLine("Archivo de expedientes vacío generado correctamente en: " + rutaArchivo);
-        }
         
     }
 }

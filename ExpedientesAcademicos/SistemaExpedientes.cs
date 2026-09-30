@@ -15,8 +15,9 @@ class SistemaExpedientes
 
         if (string.IsNullOrWhiteSpace(entrada))
         {
-            string baseDir = AppContext.BaseDirectory;
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             string rutaPorDefecto = Path.Combine(baseDir, "datos", "expedientes.xml.enc");
+            Console.Write(rutaPorDefecto);
             return rutaPorDefecto;
         }
 

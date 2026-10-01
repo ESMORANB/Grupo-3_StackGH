@@ -4,6 +4,6 @@ namespace ExpedientesAcademicos.Configuracion
     {
         public const string Contrasena = "ClaveDelEquipoMIA2026";
         public const string CarpetaDatos = "datos";
-        public const string RutaArchivoEncriptado = "datos/expedientes.xml.enc";
+        public const string RutaArchivoEncriptado = @"C:\mia_proyecto_I\repo\ExpedientesAcademicos\datos\expedientes.xml.enc";
     }
 }

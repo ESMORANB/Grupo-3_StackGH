@@ -8,20 +8,19 @@ using ExpedientesAcademicos.Busqueda;
 
 class SistemaExpedientes
 {
-    static private string? ObtenerRutaArchivo()
+   static private string? ObtenerRutaArchivo()
+{
+    Console.Write("Ruta del archivo XML (Enter para usar la ruta por defecto): ");
+    string? entrada = Console.ReadLine();
+    
+    if (string.IsNullOrWhiteSpace(entrada))
     {
-        Console.Write("Ruta del archivo XML: ");
-        string? entrada = Console.ReadLine();
-        
-        if (string.IsNullOrWhiteSpace(entrada))
-        {
-            return "";
-        }
-
-        // Quita espacios, comillas dobles y comillas simples de los extremos
-        return entrada.Trim().Trim('"', '\'').Trim();
-       
+        return Config.RutaArchivoEncriptado;
     }
+
+    // Quita espacios, comillas dobles y comillas simples de los extremos
+    return entrada.Trim().Trim('"', '\'').Trim();
+}
 
     // ============================================================
     // Metodos auxiliares de lectura validada de numeros
